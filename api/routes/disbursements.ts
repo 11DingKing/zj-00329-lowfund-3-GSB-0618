@@ -6,6 +6,7 @@ import {
   updateApplication,
   processQueue,
   computeFundPool,
+  getAvailableAmount,
 } from "../store/index.js";
 import type { Application, Milestone } from "../../shared/types/index.js";
 
@@ -253,10 +254,37 @@ router.post(
         return;
       }
 
+      const actualPaidAmount =
+        paidAmount !== undefined ? Number(paidAmount) : currentMs.amount;
+
+      if (!Number.isFinite(actualPaidAmount)) {
+        res.status(400).json({ code: 400, message: "实付金额不是有效的数值" });
+        return;
+      }
+
+      if (actualPaidAmount <= 0) {
+        res.status(400).json({ code: 400, message: "实付金额必须大于0" });
+        return;
+      }
+
+      if (actualPaidAmount > currentMs.amount) {
+        res.status(400).json({
+          code: 400,
+          message: `实付金额不能超过该里程碑的应拨额（${currentMs.amount}元）`,
+        });
+        return;
+      }
+
+      const availableAmount = getAvailableAmount();
+      if (actualPaidAmount > availableAmount) {
+        res.status(400).json({
+          code: 400,
+          message: `实付金额不能超过资金池当前可用余额（${availableAmount}元）`,
+        });
+        return;
+      }
+
       const now = new Date().toISOString();
-      const actualPaidAmount = paidAmount
-        ? Number(paidAmount)
-        : currentMs.amount;
 
       const newMilestones = [...targetApp.milestones];
       newMilestones[targetMsIndex] = {
