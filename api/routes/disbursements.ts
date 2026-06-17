@@ -253,10 +253,39 @@ router.post(
         return;
       }
 
+      if (paidAmount === undefined || paidAmount === null || paidAmount === "") {
+        res.status(400).json({ code: 400, message: "缺少实际放款金额" });
+        return;
+      }
+
+      const actualPaidAmount = Number(paidAmount);
+      if (Number.isNaN(actualPaidAmount) || !Number.isFinite(actualPaidAmount)) {
+        res.status(400).json({ code: 400, message: "实际放款金额必须是合法数值" });
+        return;
+      }
+      if (actualPaidAmount <= 0) {
+        res.status(400).json({ code: 400, message: "实际放款金额必须大于0" });
+        return;
+      }
+      if (actualPaidAmount > currentMs.amount) {
+        res.status(400).json({
+          code: 400,
+          message: `实际放款金额不能超过该里程碑应拨额（${currentMs.amount}元）`,
+        });
+        return;
+      }
+
+      const fundPool = computeFundPool();
+      const availableBalance = fundPool.total - fundPool.disbursedTotal;
+      if (actualPaidAmount > availableBalance) {
+        res.status(400).json({
+          code: 400,
+          message: `实际放款金额不能超过资金池可用余额（${availableBalance}元）`,
+        });
+        return;
+      }
+
       const now = new Date().toISOString();
-      const actualPaidAmount = paidAmount
-        ? Number(paidAmount)
-        : currentMs.amount;
 
       const newMilestones = [...targetApp.milestones];
       newMilestones[targetMsIndex] = {
