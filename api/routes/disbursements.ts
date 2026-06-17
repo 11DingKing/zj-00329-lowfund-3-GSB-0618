@@ -254,9 +254,35 @@ router.post(
       }
 
       const now = new Date().toISOString();
-      const actualPaidAmount = paidAmount
-        ? Number(paidAmount)
-        : currentMs.amount;
+      const rawPaidAmount =
+        paidAmount !== undefined ? Number(paidAmount) : currentMs.amount;
+
+      if (!Number.isFinite(rawPaidAmount) || rawPaidAmount <= 0) {
+        res
+          .status(400)
+          .json({ code: 400, message: "实付金额必须为大于0的合法数值" });
+        return;
+      }
+
+      if (rawPaidAmount > currentMs.amount) {
+        res.status(400).json({
+          code: 400,
+          message: `实付金额（${rawPaidAmount}元）超过该里程碑应拨额（${currentMs.amount}元）`,
+        });
+        return;
+      }
+
+      const fundPool = computeFundPool();
+      const availableBalance = fundPool.total - fundPool.disbursedTotal;
+      if (rawPaidAmount > availableBalance) {
+        res.status(400).json({
+          code: 400,
+          message: `实付金额（${rawPaidAmount}元）超过资金池可用余额（${availableBalance}元）`,
+        });
+        return;
+      }
+
+      const actualPaidAmount = rawPaidAmount;
 
       const newMilestones = [...targetApp.milestones];
       newMilestones[targetMsIndex] = {
