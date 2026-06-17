@@ -6,7 +6,6 @@ import {
   updateApplication,
   processQueue,
   computeFundPool,
-  getAvailableAmount,
 } from "../store/index.js";
 import type { Application, Milestone } from "../../shared/types/index.js";
 
@@ -275,11 +274,12 @@ router.post(
         return;
       }
 
-      const availableAmount = getAvailableAmount();
-      if (actualPaidAmount > availableAmount) {
+      const fundPool = computeFundPool();
+      const availableDisbursement = fundPool.total - fundPool.disbursedTotal;
+      if (actualPaidAmount > availableDisbursement) {
         res.status(400).json({
           code: 400,
-          message: `实付金额不能超过资金池当前可用余额（${availableAmount}元）`,
+          message: `实付金额不能超过资金池当前可拨付余额（${availableDisbursement}元）`,
         });
         return;
       }

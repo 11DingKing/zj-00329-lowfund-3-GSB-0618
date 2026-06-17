@@ -213,7 +213,7 @@ export default function DisbursementPage() {
 
   const availableForPay = useMemo(() => {
     if (!pool) return 0;
-    return pool.remaining + pool.queuedTotal;
+    return pool.total - pool.disbursedTotal;
   }, [pool]);
 
   const maxPayableAmount = useMemo(() => {
@@ -234,7 +234,7 @@ export default function DisbursementPage() {
       return `不能超过该里程碑应拨额（${formatAmount(payingItem.milestone.amount)}万元）`;
     }
     if (val > availableForPay) {
-      return `不能超过资金池可用余额（${formatAmount(availableForPay)}万元）`;
+      return `不能超过资金池可拨付余额（${formatAmount(availableForPay)}万元）`;
     }
     return "";
   }, [paidAmount, payingItem, availableForPay]);
@@ -1034,7 +1034,7 @@ export default function DisbursementPage() {
                 </span>
                 <span className="text-slate-400">
                   里程碑应拨：{formatAmount(payingItem.milestone.amount)} 万元 ·
-                  资金池可用：{formatAmount(availableForPay)} 万元
+                  资金池可拨：{formatAmount(availableForPay)} 万元
                 </span>
               </div>
               <input
