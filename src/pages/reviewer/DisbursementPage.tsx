@@ -58,7 +58,9 @@ export default function DisbursementPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [items, setItems] = useState<DisbursementItem[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [reviewingItem, setReviewingItem] = useState<DisbursementItem | null>(null);
+  const [reviewingItem, setReviewingItem] = useState<DisbursementItem | null>(
+    null,
+  );
   const [payingItem, setPayingItem] = useState<DisbursementItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [operator, setOperator] = useState(
@@ -79,7 +81,9 @@ export default function DisbursementPage() {
 
       const [poolRes, disbRes, appsRes] = await Promise.all([
         fetch("/api/fund-pool"),
-        fetch(`/api/disbursements?status=${filterStatus === "all" ? "" : filterStatus}`),
+        fetch(
+          `/api/disbursements?status=${filterStatus === "all" ? "" : filterStatus}`,
+        ),
         fetch("/api/applications"),
       ]);
 
@@ -131,7 +135,9 @@ export default function DisbursementPage() {
             milestone: {
               ...r.milestone,
               amount: r.milestone.amount / 10000,
-              paidAmount: r.milestone.paidAmount ? r.milestone.paidAmount / 10000 : undefined,
+              paidAmount: r.milestone.paidAmount
+                ? r.milestone.paidAmount / 10000
+                : undefined,
             },
             application: app,
           };
@@ -143,7 +149,11 @@ export default function DisbursementPage() {
       apps.forEach((app) => {
         if (!app.milestones) return;
         app.milestones.forEach((ms) => {
-          if (ms.status === "paid" || ms.status === "approved" || ms.status === "rejected") {
+          if (
+            ms.status === "paid" ||
+            ms.status === "approved" ||
+            ms.status === "rejected"
+          ) {
             historyItems.push({
               appId: app.id,
               companyName: app.companyName,
@@ -159,9 +169,19 @@ export default function DisbursementPage() {
       });
       historyItems.sort((a, b) => {
         const getDate = (ms: Milestone) => {
-          return ms.paidDate || ms.approveDate || ms.reviewDate || ms.rejectDate || ms.requestDate || "";
+          return (
+            ms.paidDate ||
+            ms.approveDate ||
+            ms.reviewDate ||
+            ms.rejectDate ||
+            ms.requestDate ||
+            ""
+          );
         };
-        return new Date(getDate(b.milestone)).getTime() - new Date(getDate(a.milestone)).getTime();
+        return (
+          new Date(getDate(b.milestone)).getTime() -
+          new Date(getDate(a.milestone)).getTime()
+        );
       });
       setHistory(historyItems);
     } catch {
@@ -176,12 +196,18 @@ export default function DisbursementPage() {
   }, [filterStatus]);
 
   const pendingReviewTotal = useMemo(
-    () => items.filter(i => i.milestone.status === "requested").reduce((sum, item) => sum + item.milestone.amount, 0),
+    () =>
+      items
+        .filter((i) => i.milestone.status === "requested")
+        .reduce((sum, item) => sum + item.milestone.amount, 0),
     [items],
   );
 
   const pendingPayTotal = useMemo(
-    () => items.filter(i => i.milestone.status === "approved").reduce((sum, item) => sum + item.milestone.amount, 0),
+    () =>
+      items
+        .filter((i) => i.milestone.status === "approved")
+        .reduce((sum, item) => sum + item.milestone.amount, 0),
     [items],
   );
 
@@ -192,6 +218,27 @@ export default function DisbursementPage() {
     setShowReject(false);
     setRejectType("review");
   };
+
+  const maxPayableAmount = useMemo(() => {
+    if (!payingItem || !pool) return 0;
+    const milestoneAmount = payingItem.milestone.amount;
+    const poolAvailable = pool.total - pool.disbursedTotal;
+    return Math.min(milestoneAmount, poolAvailable);
+  }, [payingItem, pool]);
+
+  const paidAmountError = useMemo(() => {
+    if (!paidAmount) return "请填写实际放款金额";
+    const num = Number(paidAmount);
+    if (!Number.isFinite(num)) return "请输入有效的数值";
+    if (num <= 0) return "放款金额必须大于0";
+    if (payingItem && num > payingItem.milestone.amount) {
+      return `放款金额不能超过该里程碑的应拨额（${formatAmount(payingItem.milestone.amount)}万元）`;
+    }
+    if (pool && num > pool.total - pool.disbursedTotal) {
+      return `放款金额不能超过资金池可用余额（${formatAmount(pool.total - pool.disbursedTotal)}万元）`;
+    }
+    return "";
+  }, [paidAmount, payingItem, pool]);
 
   const openPay = (item: DisbursementItem) => {
     setPayingItem(item);
@@ -228,7 +275,10 @@ export default function DisbursementPage() {
         },
       );
       if (res.ok) {
-        showToast(pass ? "审核通过，可进行放款" : "审核不通过，已退回", "success");
+        showToast(
+          pass ? "审核通过，可进行放款" : "审核不通过，已退回",
+          "success",
+        );
         setReviewingItem(null);
         await fetchData();
       } else {
@@ -248,8 +298,8 @@ export default function DisbursementPage() {
       showToast("请输入放款人", "error");
       return;
     }
-    if (!paidAmount || Number(paidAmount) <= 0) {
-      showToast("请填写实际放款金额", "error");
+    if (paidAmountError) {
+      showToast(paidAmountError, "error");
       return;
     }
     setSubmitting(true);
@@ -368,7 +418,9 @@ export default function DisbursementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-navy-800">拨付审核</h1>
-          <p className="text-slate-500 mt-1">审核里程碑拨付申请并执行资金下拨</p>
+          <p className="text-slate-500 mt-1">
+            审核里程碑拨付申请并执行资金下拨
+          </p>
         </div>
         <div className="flex gap-2">
           {filterOptions.map((opt) => (
@@ -454,9 +506,7 @@ export default function DisbursementPage() {
             <Clock size={18} className="text-amber-500" />
             拨付列表
           </h3>
-          <span className="text-xs text-slate-400">
-            共 {items.length} 笔
-          </span>
+          <span className="text-xs text-slate-400">共 {items.length} 笔</span>
         </div>
         {loading ? (
           <div className="p-6 space-y-3">
@@ -632,7 +682,9 @@ export default function DisbursementPage() {
                       </td>
                       <td className="py-3.5 px-6 text-right">
                         <span className="font-bold font-display text-navy-700">
-                          {formatAmount(item.milestone.paidAmount ?? item.milestone.amount)}
+                          {formatAmount(
+                            item.milestone.paidAmount ?? item.milestone.amount,
+                          )}
                         </span>
                       </td>
                       <td className="py-3.5 px-6">
@@ -666,17 +718,23 @@ export default function DisbursementPage() {
           <div className="space-y-5">
             <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 text-sm text-slate-600">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">1</span>
+                <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">
+                  1
+                </span>
                 企业申请
               </div>
               <ArrowRight size={16} className="text-slate-300" />
               <div className="flex items-center gap-2 font-semibold text-navy-700">
-                <span className="w-6 h-6 rounded-full bg-gradient-to-r from-navy-600 to-teal-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                <span className="w-6 h-6 rounded-full bg-gradient-to-r from-navy-600 to-teal-500 text-white flex items-center justify-center text-xs font-bold">
+                  2
+                </span>
                 审核
               </div>
               <ArrowRight size={16} className="text-slate-300" />
               <div className="flex items-center gap-2 text-slate-400">
-                <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">3</span>
+                <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">
+                  3
+                </span>
                 放款
               </div>
             </div>
@@ -850,17 +908,23 @@ export default function DisbursementPage() {
           <div className="space-y-5">
             <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 text-sm text-slate-600">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xs font-bold">1</span>
+                <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xs font-bold">
+                  1
+                </span>
                 企业申请
               </div>
               <ArrowRight size={16} className="text-slate-300" />
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">✓</span>
+                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
+                  ✓
+                </span>
                 审核通过
               </div>
               <ArrowRight size={16} className="text-slate-300" />
               <div className="flex items-center gap-2 font-semibold text-navy-700">
-                <span className="w-6 h-6 rounded-full bg-gradient-to-r from-navy-600 to-teal-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                <span className="w-6 h-6 rounded-full bg-gradient-to-r from-navy-600 to-teal-500 text-white flex items-center justify-center text-xs font-bold">
+                  3
+                </span>
                 放款
               </div>
             </div>
@@ -872,12 +936,20 @@ export default function DisbursementPage() {
                   审核通过
                 </div>
                 <div className="text-sm text-emerald-800 space-y-1">
-                  <div>审核人：<span className="font-semibold">{payingItem.milestone.reviewer}</span></div>
+                  <div>
+                    审核人：
+                    <span className="font-semibold">
+                      {payingItem.milestone.reviewer}
+                    </span>
+                  </div>
                   {payingItem.milestone.reviewComment && (
                     <div>审核意见：{payingItem.milestone.reviewComment}</div>
                   )}
                   {payingItem.milestone.reviewDate && (
-                    <div>审核时间：{formatDateTime(payingItem.milestone.reviewDate)}</div>
+                    <div>
+                      审核时间：
+                      {formatDateTime(payingItem.milestone.reviewDate)}
+                    </div>
                   )}
                 </div>
               </div>
@@ -940,18 +1012,49 @@ export default function DisbursementPage() {
 
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                <div className="flex items-center gap-1.5">
-                  <DollarSign size={14} />
-                  实际放款金额（万元）
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <DollarSign size={14} />
+                    实际放款金额（万元）
+                  </div>
+                  <div className="text-xs text-slate-500 font-normal">
+                    本次可放上限：
+                    <span className="font-semibold text-teal-600 font-display">
+                      {formatAmount(maxPayableAmount)}
+                    </span>
+                  </div>
                 </div>
               </label>
               <input
                 type="number"
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 outline-none transition-all font-display font-bold text-navy-700"
+                className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 outline-none transition-all font-display font-bold ${
+                  paidAmountError
+                    ? "border-rose-300 text-rose-700 bg-rose-50"
+                    : "border-slate-200 text-navy-700"
+                }`}
                 placeholder={String(payingItem.milestone.amount)}
               />
+              {paidAmountError && (
+                <div className="mt-1.5 text-xs text-rose-600 flex items-center gap-1">
+                  <AlertTriangle size={12} />
+                  {paidAmountError}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-slate-400 space-y-0.5">
+                <div>
+                  · 里程碑应拨额：{formatAmount(payingItem.milestone.amount)}{" "}
+                  万元
+                </div>
+                <div>
+                  · 资金池可用余额：
+                  {formatAmount(
+                    (pool?.total ?? 0) - (pool?.disbursedTotal ?? 0),
+                  )}{" "}
+                  万元
+                </div>
+              </div>
             </div>
 
             <div>
